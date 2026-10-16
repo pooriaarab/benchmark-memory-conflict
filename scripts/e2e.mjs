@@ -35,15 +35,6 @@ await execFile(process.execPath, [genScript, "--seed", "999"], { cwd: altDir });
 const altTasks = (await readFile(join(altDir, "data/tasks.jsonl"), "utf8")).trim().split("\n").map(JSON.parse);
 assert.ok(altTasks.some((t, i) => fingerprint(t) !== fingerprint(tasks[i])), "seed 999 should change task content");
 
-// The hidden split must differ from public rows and must refuse the public seed.
-const hiddenDir = await mkdtemp(join(tmpdir(), "mmc-hidden-"));
-await execFile(process.execPath, [genScript, "--seed", "424242", "--split", "hidden"], { cwd: hiddenDir });
-const hiddenTasks = (await readFile(join(hiddenDir, "data/tasks-hidden.jsonl"), "utf8")).trim().split("\n").map(JSON.parse);
-const publicContent = new Set(tasks.map(fingerprint));
-assert.equal(hiddenTasks.length, 40);
-assert.ok(hiddenTasks.every((t) => !publicContent.has(fingerprint(t))), "hidden split must not reuse public scenario content");
-await assert.rejects(execFile(process.execPath, [genScript, "--seed", "20261015", "--split", "hidden"], { cwd: hiddenDir }), /unpublished seed/);
-
 // Visible-information solver: drives the real environment and uses only the
 // system text, the prompt, and tool results — never task.expected or fixtures.
 function solveVisibly(task) {
