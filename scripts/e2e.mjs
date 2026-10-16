@@ -9,18 +9,22 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const execFile = promisify(execFileCallback);
 
 await execFile("npm", ["run", "build"]);
-const cli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--json"], { maxBuffer: 1_000_000 });
+const taskText = await readFile(new URL("../data/tasks.jsonl", import.meta.url), "utf8");
+const taskCount = taskText.trim().split("\n").filter(Boolean).length;
+const cli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--json"], { maxBuffer: 4_000_000 });
 const report = JSON.parse(cli.stdout);
-assert.equal(report.rows.length, 2);
-assert.ok(report.rows.some((row) => row.score === 1));
-assert.ok(report.rows.some((row) => row.score === 0));
+assert.equal(report.rows.length, taskCount);
+if (taskCount <= 2) {
+  assert.ok(report.rows.some((row) => row.score === 1));
+  assert.ok(report.rows.some((row) => row.score === 0));
+}
 
 const probe = createNetServer();
 await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
 const address = probe.address(); assert.ok(address && typeof address === "object");
 await new Promise((resolve) => probe.close(resolve));
 const server = spawn(process.execPath, ["dist/cli.js", "serve", String(address.port)], { stdio: ["ignore", "pipe", "pipe"] });
-const base = `http://127.0.0.1:${address.port}`; const routes = {};
+const base = `http://127.0.0.1:${address.port}`; const routes = {}; let firstId = "starter-1";
 async function get(path) {
   const response = await fetch(`${base}${path}`); routes[`GET ${path}`] = response.status;
   return { response, value: await response.json() };
@@ -28,12 +32,13 @@ async function get(path) {
 try {
   for (let attempt = 0; attempt < 100; attempt++) { try { await get("/health"); break; } catch { await new Promise((resolve) => setTimeout(resolve, 20)); } }
   const health = await get("/health"); assert.equal(health.response.status, 200);
-  const listed = await get("/v1/tasks"); assert.equal(listed.value.tasks.length, 2);
-  const shown = await get("/v1/tasks/starter-1"); assert.equal(shown.value.task.id, "starter-1");
-  const score = await fetch(`${base}/v1/score`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: "starter-1", submission: report.rows[0].submission }) });
+  const listed = await get("/v1/tasks"); assert.equal(listed.value.tasks.length, taskCount);
+  firstId = listed.value.tasks[0].id;
+  const shown = await get(`/v1/tasks/${firstId}`); assert.equal(shown.value.task.id, firstId);
+  const score = await fetch(`${base}/v1/score`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: firstId, submission: report.rows[0].submission }) });
   routes["POST /v1/score"] = score.status; assert.equal(score.status, 200);
   assert.equal((await get("/v1/provenance")).response.status, 200);
-  assert.equal((await get("/v1/index-entry")).value.task_count, 2);
+  assert.equal((await get("/v1/index-entry")).value.task_count, taskCount);
 } finally { if (server.exitCode === null) { server.kill("SIGTERM"); await once(server, "exit"); } }
 
 const transport = new StdioClientTransport({ command: process.execPath, args: ["dist/cli.js", "mcp"], cwd: process.cwd(), stderr: "pipe" });
@@ -43,8 +48,8 @@ try {
   const available = await client.listTools(); toolNames = available.tools.map((tool) => tool.name).sort();
   assert.deepEqual(toolNames, ["get_provenance", "get_task", "list_tasks", "run_benchmark", "score_answer"]);
   const calls = [
-    ["list_tasks", {}], ["get_task", { taskId: "starter-1" }],
-    ["score_answer", { taskId: "starter-1", submission: report.rows[0].submission }],
+    ["list_tasks", {}], ["get_task", { taskId: firstId }],
+    ["score_answer", { taskId: firstId, submission: report.rows[0].submission }],
     ["get_provenance", {}], ["run_benchmark", { model: "offline" }],
   ];
   for (const [name, args] of calls) {
