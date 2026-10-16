@@ -1,6 +1,6 @@
 # Household conflict catalog (MIT)
 
-Human-written trap labels used by `scripts/gen-tasks.mjs`. Each public task maps to one primary trap; several scenarios combine two traps (cancel-first plus reversed preference).
+Human-written trap labels used by `scripts/gen-tasks.mjs`. Each public task maps to exactly one trap; scenarios do not combine traps.
 
 | Trap | What trips models |
 |---|---|

@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { run, openrouterAdapter, type Benchmark, type Task } from "benchmark-core";
 import { benchmark, createBenchmark } from "./benchmark.js";
+import { attachMetrics } from "./report-metrics.js";
 import { publicTask, resolveAllowedTasksPath } from "./task-source.js";
 
 const withTasks = (schema: Record<string, unknown>) => ({ type: "object" as const, properties: { ...schema, tasks: { type: "string", description: "Optional task split path (inside the package or in BMC_TASKS_ALLOW)." } }, additionalProperties: false });
@@ -55,7 +56,7 @@ export function createMcpServer(base: Benchmark = benchmark, { strip = false }: 
       if (request.params.name === "run_benchmark") {
         if (typeof input.model !== "string") return content({ error: "model is required." }, true);
         if (!process.env.OPENROUTER_API_KEY) return content({ error: "OPENROUTER_API_KEY is required to run a benchmark." }, true);
-        return content(await run(base, openrouterAdapter({ model: input.model })));
+        return content(await attachMetrics(base, await run(base, openrouterAdapter({ model: input.model }))));
       }
       if (request.params.name === "get_provenance") return content({ provenance: base.definition.provenance });
       return content({ error: `Unknown tool: ${request.params.name}` }, true);
