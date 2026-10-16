@@ -8,6 +8,7 @@ authors:
 version: "0.1.0"
 date-released: 2026-10-16
 license: MIT
+doi: 10.5281/zenodo.23422400
 repository-code: https://github.com/pooriaarab/benchmark-memory-conflict
 url: "https://aibenchmarkindex.com/benchmarks/benchmark-memory-conflict"
 abstract: "Benchmark for household memory conflicts: latest preference, privacy, booking consent, and authority in agent tool traces."
