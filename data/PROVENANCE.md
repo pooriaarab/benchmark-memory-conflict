@@ -17,13 +17,13 @@ Every seeded draw flows through `mulberry32(seed)`: trap placement, service, opt
 
 ## Hidden split
 
-- **Command:** `node scripts/gen-tasks.mjs --seed 20261015 --split hidden`
-- **Output:** `data/tasks-hidden.jsonl` (not published; for maintainer evaluation only)
-- **Plan:** Same templates with `mmc-h-###` ids; never commit hidden rows to the public JSONL.
+- **Command:** `node scripts/gen-tasks.mjs --seed <unpublished-seed> --split hidden`
+- **Output:** `data/tasks-hidden.jsonl` (never committed; gitignored, for maintainer evaluation only)
+- **Plan:** The hidden split refuses the public seed and uses a separate template profile (`hh-birch` household, different member names, option labels, private notes, and prompt phrasing), so hidden content cannot coincide with public rows even before the seeds differ.
 
 ## Contamination
 
-All conversation text is synthetic (CC0-style fictional households). No PerMemBench text is copied. Public release cutoff: **2026-10-15**.
+All conversation text is synthetic (CC0-style fictional households). No PerMemBench text is copied. Public release cutoff: **2026-10-15**. Public tasks may enter training data; final comparisons should use the hidden split.
 
 ## Refresh cadence
 
