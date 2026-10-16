@@ -52,7 +52,7 @@ export const benchmark = defineBenchmark({
   provenance: [{
     name: "Seeded household conversation generator", kind: "synthetic", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/scripts/gen-tasks.mjs",
     licence: "MIT", howToGet: "Run `node scripts/gen-tasks.mjs --seed 20261015` from the repository root.", retrievedAt: "2026-10-16T00:00:00.000Z",
-    contaminationNotes: "Public tasks use seed 20261015. Hidden split: `node scripts/gen-tasks.mjs --seed <unpublished> --split hidden` (never committed). The hidden template profile ships in this repository, so the split is protected only by the unpublished seed, not by content isolation.",
+    contaminationNotes: "Public tasks use seed 20261015; public release cutoff 2026-10-15 and no PerMemBench text copied. Hidden split: `node scripts/gen-tasks.mjs --seed <unpublished> --split hidden` (never committed). The hidden template profile ships in this repository, so the split is protected only by the unpublished seed, not by content isolation.",
     refresh: "Edit templates in scripts/gen-tasks.mjs, regenerate, and review the JSONL diff.",
   }, {
     name: "Household conflict catalog", kind: "human-written", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/docs/conflict-catalog.md",
