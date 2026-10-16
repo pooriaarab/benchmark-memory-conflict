@@ -39,6 +39,7 @@ const badCases = [
       ],
     },
   },
+  { label: "malformed-args", submission: { toolLog: [{ name: "ask_user", result: {} }] } },
   {
     label: "no-ask",
     submission: {
