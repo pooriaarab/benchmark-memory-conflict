@@ -161,6 +161,55 @@ for (const bad of badPolicies) {
   }
 }
 
+// "Never read memory" policies — first option, last option and keyword
+// heuristics over option names — must stay near chance per trap kind on the
+// public split and on two hidden seeds.
+const hidden2Dir = await mkdtemp(join(tmpdir(), "mmc-hidden2-"));
+await execFile(process.execPath, [genScript, "--seed", "777777", "--split", "hidden"], { cwd: hidden2Dir });
+const hidden2Tasks = (await readFile(join(hidden2Dir, "data/tasks-hidden.jsonl"), "utf8")).trim().split("\n").map(JSON.parse);
+const noMemoryPolicies = {
+  "first-option": (t) => bookEntry(t, t.input.options[0].id),
+  "last-option": (t) => bookEntry(t, t.input.options.at(-1).id),
+  "keyword-options": (t) => {
+    const promptTokens = new Set(t.prompt.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2));
+    let best = t.input.options[0]; let hits = -1;
+    for (const option of t.input.options) {
+      const n = `${option.label} ${option.tags.join(" ")}`.toLowerCase().split(/[^a-z0-9]+/).filter((w) => promptTokens.has(w)).length;
+      if (n > hits) { best = option; hits = n; }
+    }
+    return bookEntry(t, best.id);
+  },
+};
+const noMemoryMeans = {};
+for (const [label, pick] of Object.entries(noMemoryPolicies)) {
+  for (const [splitName, splitTasks] of [["public", tasks], ["hidden-424242", hiddenTasks], ["hidden-777777", hidden2Tasks]]) {
+    const byTrap = new Map();
+    for (const task of splitTasks) {
+      const scored = await benchmark.score(task, { toolLog: [pick(task)] }, { seed: 1 });
+      const bucket = byTrap.get(task.metadata.trap) ?? [];
+      bucket.push(scored.score);
+      byTrap.set(task.metadata.trap, bucket);
+    }
+    for (const [trap, scores] of byTrap) {
+      const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+      noMemoryMeans[`${label}/${splitName}/${trap}`] = Number(mean.toFixed(3));
+      assert.ok(mean <= 0.35, `${label} on ${splitName}/${trap} should stay near chance, got ${mean.toFixed(2)}`);
+    }
+  }
+}
+console.log(`e2e: no-memory policies <=0.35 on ${Object.keys(noMemoryMeans).length} split/trap cells`);
+
+// Any member who can authorize is a valid clarification recipient; asking a
+// member who cannot authorize, or booking without asking, stays wrong.
+for (const task of tasks.filter((t) => t.metadata.trap === "authority_unclear")) {
+  const authorizers = task.input.members.filter((m) => m.canAuthorize);
+  assert.ok(authorizers.length >= 2, `${task.id} should offer more than one authorizer`);
+  for (const member of task.input.members) {
+    const asked = await benchmark.score(task, { toolLog: [{ name: "ask_user", args: { memberId: member.id, message: "May I go ahead with this booking?" }, result: {} }, rightBook(task)] }, { seed: 1 });
+    assert.equal(asked.score, member.canAuthorize ? 1 : 0, `asking ${member.id} on ${task.id}: ${asked.reason}`);
+  }
+}
+
 // Cancelling a booking that must stay active is graded as a wrongful cancel.
 const keepTask = JSON.parse(JSON.stringify(tasks.find((t) => t.expected.bookOptionId && !t.expected.mustAskUserIds.length)));
 keepTask.id = `${keepTask.id}-keep`;
