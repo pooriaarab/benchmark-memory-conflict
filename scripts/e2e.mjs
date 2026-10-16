@@ -38,6 +38,7 @@ await assert.rejects(execFile(process.execPath, [genScript, "--seed", "20261015"
 
 // Hidden fixtures must reference real options, members and bookings, and every
 // hidden reference trace must grade high through the real grader.
+const hiddenScores = [];
 for (const t of hiddenTasks) {
   const optIds = new Set(t.input.options.map((o) => o.id));
   const memIds = new Set(t.input.members.map((m) => m.id));
@@ -50,7 +51,9 @@ for (const t of hiddenTasks) {
   const toolLog = (t.metadata?.referenceTrace ?? []).map((e) => ({ name: e.name, args: e.args ?? {}, result: {} }));
   const scored = await benchmark.score(t, { toolLog }, { seed: 1 });
   assert.ok(scored.score >= 0.85, `${t.id} reference trace should grade high, got ${scored.score}`);
+  hiddenScores.push(scored.score);
 }
+console.log(`e2e: hidden split ${hiddenTasks.length} tasks, min reference score ${Math.min(...hiddenScores)}`);
 
 const badCases = [
   { label: "empty", submission: { toolLog: [] } },
