@@ -9,7 +9,8 @@ Directory: https://aibenchmarkindex.com/benchmarks/benchmark-memory-conflict
 ## Tasks
 
 40 episode tasks in data/tasks.jsonl. Generator: node scripts/gen-tasks.mjs --seed 20261015
-Hidden eval split: node scripts/gen-tasks.mjs --seed 20261015 --split hidden (not published).
+Hidden eval split: node scripts/gen-tasks.mjs --seed <unpublished> --split hidden (not committed).
+Alternate splits: --tasks <path> on the CLI, tasks arg on MCP tools, ?tasks=<path> on API routes (inside package or BMC_TASKS_ALLOW).
 
 ## Tools (simulator)
 
@@ -26,4 +27,4 @@ npx benchmark-memory-conflict run --model offline --provider mock
 
 ## Exports
 
-Root: benchmark, run, score. Subpaths: benchmark-memory-conflict/api (handler), benchmark-memory-conflict/mcp.
+Root: benchmark, createBenchmark, run, score. Subpaths: benchmark-memory-conflict/api (handler), benchmark-memory-conflict/mcp.

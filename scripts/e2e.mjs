@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { benchmark, HouseholdEnvironment } from "../dist/index.js";
+import { benchmark, createBenchmark, HouseholdEnvironment } from "../dist/index.js";
 
 const execFile = promisify(execFileCallback);
 const genScript = fileURLToPath(new URL("./gen-tasks.mjs", import.meta.url));
@@ -62,6 +62,27 @@ for (const t of hiddenTasks) {
   hiddenScores.push(scored.score);
 }
 console.log(`e2e: hidden split ${hiddenTasks.length} tasks, min reference score ${Math.min(...hiddenScores)}`);
+
+// Alternate splits must reach every surface. The hidden fixture is written
+// inside the package so the API and MCP allow it without an env allow-list.
+const hiddenPath = "data/tasks-hidden.jsonl";
+await writeFile(hiddenPath, await readFile(join(hiddenDir, "data/tasks-hidden.jsonl"), "utf8"));
+const publicIds = tasks.map((t) => t.id);
+const hiddenIds = hiddenTasks.map((t) => t.id);
+const hiddenRef = hiddenTasks[0].metadata.referenceTrace.map((e) => ({ name: e.name, args: e.args ?? {}, result: {} }));
+
+// SDK: default, hidden, default, hidden in ONE process. Each createBenchmark
+// call builds a fresh object, so the cached task list cannot leak over.
+assert.deepEqual((await benchmark.listTasks()).map((t) => t.id), publicIds);
+assert.deepEqual((await createBenchmark({ tasksPath: hiddenPath }).listTasks()).map((t) => t.id), hiddenIds);
+assert.deepEqual((await benchmark.listTasks()).map((t) => t.id), publicIds);
+assert.deepEqual((await createBenchmark({ tasksPath: hiddenPath }).listTasks()).map((t) => t.id), hiddenIds);
+assert.equal((await createBenchmark({ tasks: hiddenTasks.slice(0, 3) }).listTasks()).length, 3);
+assert.throws(() => createBenchmark({ tasksPath: hiddenPath, tasks: [] }), /not both/);
+
+// CLI: --tasks swaps the split for any command.
+const cliHidden = JSON.parse((await execFile(process.execPath, ["dist/cli.js", "list", "--tasks", hiddenPath, "--json"])).stdout);
+assert.deepEqual(cliHidden.tasks.map((t) => t.id), hiddenIds);
 
 // Visible-information solver: drives the real environment and uses only the
 // system text, the prompt, and tool results — never task.expected or fixtures.
@@ -246,6 +267,19 @@ try {
   const shown = await get(`/v1/tasks/${sample.id}`); assert.equal(shown.value.task.id, sample.id);
   const score = await fetch(`${base}/v1/score`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: sample.id, submission: report.rows[0].submission }) });
   routes["POST /v1/score"] = score.status; assert.equal(score.status, 200);
+  // Alternate split over the API: allowed inside the package, stripped of
+  // answer fields, and still gradeable server-side.
+  const altList = await get(`/v1/tasks?tasks=${encodeURIComponent(hiddenPath)}`);
+  assert.deepEqual(altList.value.tasks.map((t) => t.id), hiddenIds);
+  assert.ok(altList.value.tasks.every((t) => t.expected === undefined && !("referenceTrace" in (t.metadata ?? {}))), "served hidden tasks must not carry answers");
+  const altOne = await get(`/v1/tasks/${hiddenIds[0]}?tasks=${encodeURIComponent(hiddenPath)}`);
+  assert.equal(altOne.value.task.id, hiddenIds[0]);
+  assert.equal(altOne.value.task.expected, undefined);
+  const altScore = await fetch(`${base}/v1/score?tasks=${encodeURIComponent(hiddenPath)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: hiddenIds[0], submission: { toolLog: hiddenRef } }) });
+  routes["POST /v1/score?tasks"] = altScore.status;
+  assert.ok((await altScore.json()).score >= 0.85, "hidden reference trace should grade high over the API");
+  const denied = await get(`/v1/tasks?tasks=${encodeURIComponent("/etc/passwd")}`);
+  assert.equal(denied.response.status, 403, "outside-package task paths must be rejected");
   assert.equal((await get("/v1/provenance")).response.status, 200);
   assert.equal((await get("/v1/index-entry")).value.task_count, 40);
 } finally { if (server.exitCode === null) { server.kill("SIGTERM"); await once(server, "exit"); } }
@@ -265,10 +299,25 @@ try {
     const result = await client.callTool({ name, arguments: args });
     if (name === "run_benchmark") assert.equal(result.isError, true); else assert.notEqual(result.isError, true);
   }
+  // Alternate split over MCP: served tasks are stripped, scoring still works.
+  const mcpHidden = JSON.parse((await client.callTool({ name: "list_tasks", arguments: { tasks: hiddenPath } })).content[0].text);
+  assert.deepEqual(mcpHidden.tasks.map((t) => t.id), hiddenIds);
+  assert.ok(mcpHidden.tasks.every((t) => t.expected === undefined && !("referenceTrace" in (t.metadata ?? {}))), "MCP hidden tasks must not carry answers");
+  const mcpScore = await client.callTool({ name: "score_answer", arguments: { taskId: hiddenIds[0], tasks: hiddenPath, submission: { toolLog: hiddenRef } } });
+  assert.notEqual(mcpScore.isError, true);
+  assert.ok(JSON.parse(mcpScore.content[0].text).score >= 0.85);
+  const mcpDenied = await client.callTool({ name: "list_tasks", arguments: { tasks: "/etc/passwd" } });
+  assert.equal(mcpDenied.isError, true, "outside-package task paths must be rejected over MCP");
 } finally { await client.close(); }
 
 const artifact = { task_count: report.rows.length, scores: report.rows.map((row) => row.score), route_status_codes: routes, tool_names: toolNames };
 await mkdir("artifacts", { recursive: true });
 await writeFile("artifacts/e2e-report.json", `${JSON.stringify(artifact, null, 2)}\n`);
+// The hidden fixture exists at data/tasks-hidden.jsonl now: npm pack must
+// never ship it (or any file whose name contains "hidden").
+const pack = JSON.parse((await execFile("npm", ["pack", "--dry-run", "--json"], { maxBuffer: 4_000_000 })).stdout);
+const packedNames = pack[0].files.map((f) => f.path);
+assert.ok(!packedNames.some((p) => p.toLowerCase().includes("hidden")), `hidden file would be packed: ${packedNames.filter((p) => p.includes("hidden"))}`);
+
 assert.match(await readFile("data/PROVENANCE.md", "utf8"), /Seeded household conversation generator/);
 console.log(`e2e: ${artifact.task_count} tasks, ${Object.keys(routes).length} routes, ${toolNames.length} tools -> all surfaces passed, ok`);

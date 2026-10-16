@@ -79,12 +79,14 @@ node scripts/gen-tasks.mjs --seed 20261015
 ## SDK
 
 ```ts
-import { benchmark, run, score } from "benchmark-memory-conflict";
+import { benchmark, createBenchmark, run, score } from "benchmark-memory-conflict";
 ```
+
+`createBenchmark({ tasksPath })` or `createBenchmark({ tasks })` builds a fresh benchmark over another task split (a cached task list never leaks between objects).
 
 ## CLI
 
-`list`, `show`, `run`, `score`, `card`, `provenance`, `index-entry`, `serve`, `mcp`. Pass `--json` for machine-readable output.
+`list`, `show`, `run`, `score`, `card`, `provenance`, `index-entry`, `serve`, `mcp`. Pass `--json` for machine-readable output. Any command takes `--tasks <path>` to run against another split file.
 
 ## Model Context Protocol
 
@@ -92,13 +94,13 @@ import { benchmark, run, score } from "benchmark-memory-conflict";
 npx benchmark-memory-conflict mcp
 ```
 
-Tools: `list_tasks`, `get_task`, `score_answer`, `run_benchmark`, `get_provenance`.
+Tools: `list_tasks`, `get_task`, `score_answer`, `run_benchmark`, `get_provenance`. `list_tasks`, `get_task` and `score_answer` take an optional `tasks` path to reach another split.
 
 ## HTTP API
 
 `handler` from `benchmark-memory-conflict/api`, or `npx benchmark-memory-conflict serve`.
 
-Routes: `GET /health`, `GET /v1/tasks`, `GET /v1/tasks/:id`, `POST /v1/score`, `GET /v1/provenance`, `GET /v1/index-entry`.
+Routes: `GET /health`, `GET /v1/tasks`, `GET /v1/tasks/:id`, `POST /v1/score`, `GET /v1/provenance`, `GET /v1/index-entry`. `?tasks=<path>` selects another split; the path must sit inside the package or in the `BMC_TASKS_ALLOW` env list. Served non-default tasks omit `expected` and `metadata.referenceTrace`.
 
 ## Limits
 
