@@ -1,35 +1,47 @@
 import { readFile } from "node:fs/promises";
-import { defineBenchmark, exactMatch, replay, type Environment, type JsonValue, type Task, type ToolResult } from "benchmark-core";
+import { defineBenchmark, type ScriptedTurn, type Task, type ToolLogEntry } from "benchmark-core";
+import { gradeMemoryConflict, HouseholdEnvironment } from "./household-environment.js";
 
 async function loadTasks(): Promise<Task[]> {
   const text = await readFile(new URL("../data/tasks.jsonl", import.meta.url), "utf8");
   return text.trim().split("\n").map((line) => JSON.parse(line) as Task);
 }
-class StarterEnvironment implements Environment {
-  #finished = false;
-  reset() {
-    this.#finished = false;
-    return { system: "Call finish_task once, then stop.", tools: [{ name: "finish_task", description: "Mark the task finished.", parameters: { type: "object" as const, properties: {}, additionalProperties: false } }] };
-  }
-  callTool(name: string, _args: Record<string, JsonValue>): ToolResult {
-    if (name !== "finish_task") return { result: null, error: { code: "UNKNOWN_TOOL", message: `Unknown tool: ${name}` } };
-    this.#finished = true; return { result: { finished: true } };
-  }
-  state() { return { finished: this.#finished }; }
-  done() { return this.#finished; }
+
+function referenceTrace(task: Task): ToolLogEntry[] {
+  const trace = task.metadata?.referenceTrace;
+  if (!Array.isArray(trace)) return [];
+  return trace.map((row) => {
+    const entry = row as { name: string; args?: Record<string, unknown> };
+    return { name: entry.name, args: (entry.args ?? {}) as Record<string, import("benchmark-core").JsonValue>, result: {} };
+  });
 }
+
+function traceToTurns(trace: ToolLogEntry[]): ScriptedTurn[] {
+  const turns: ScriptedTurn[] = trace.map((entry) => ({ toolCalls: [{ name: entry.name, args: entry.args }] }));
+  turns.push({ content: "Booked with the latest household preferences." });
+  return turns;
+}
+
 export const benchmark = defineBenchmark({
   id: "benchmark-memory-conflict", name: "Memory Conflict", tagline: "Changing preferences and household disagreements in an assistant's memory.", tags: ["helpful"], category: "agents",
-  whatItMeasures: "Changing preferences and household disagreements in an assistant's memory.", version: "0.1.0", status: "alpha", loadTasks,
-  async grade(task, submission, context) {
-    if (task.kind === "single") return submission.answer === undefined ? { score: 0, reason: "Submission has no answer." } : exactMatch(task.expected ?? null, submission.answer);
-    const state = await replay(new StarterEnvironment(), task, submission.toolLog ?? [], context.seed) as { finished?: boolean };
-    return state.finished ? { score: 1, reason: "The trace finished the task." } : { score: 0, reason: "The trace did not finish the task." };
-  },
-  environment: () => new StarterEnvironment(),
+  whatItMeasures: "Whether an assistant applies the latest valid household preference, respects privacy and authority, and keeps bookings reversible.",
+  version: "0.1.0", status: "alpha", loadTasks,
+  async grade(task, submission, context) { return gradeMemoryConflict(task, submission, context.seed); },
+  environment: () => new HouseholdEnvironment(),
   mockPolicies: {
-    good: (task) => task.kind === "episode" ? [{ toolCalls: [{ name: "finish_task", args: {} }] }] : [],
-    bad: (task) => task.kind === "episode" ? [{ content: "Skipped the tool." }] : [],
+    good: (task) => traceToTurns(referenceTrace(task)),
+    bad: (task) => {
+      const trace = referenceTrace(task); if (!trace.length) return [{ content: "No tools." }];
+      const first = trace[0]!;
+      if (task.metadata?.trap === "authority_unclear") return traceToTurns(trace.filter((t) => t.name !== "ask_user"));
+      if (task.metadata?.trap === "private_note") {
+        const book = trace.find((t) => t.name === "book");
+        const turns = [...traceToTurns(trace.filter((t) => t.name !== "book")), { toolCalls: [{ name: "ask_user", args: { memberId: "ben", message: "Should we plan a surprise party with steak?" } }] }];
+        if (book) turns.push({ toolCalls: [{ name: book.name, args: book.args }] });
+        return turns;
+      }
+      return traceToTurns([first]);
+    },
   },
   provenance: [{
     name: "Seeded household conversation generator", kind: "synthetic", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/scripts/gen-tasks.mjs",
@@ -41,5 +53,5 @@ export const benchmark = defineBenchmark({
     licence: "MIT", howToGet: "Read docs/conflict-catalog.md in this repository.", retrievedAt: "2026-10-16T00:00:00.000Z",
     contaminationNotes: "Trap labels are maintainer-written; tasks are synthetic from templates.", refresh: "Extend the catalog and generator templates together.",
   }],
-  gradingMethod: "Exact match for single answers; deterministic state replay for episodes.",
+  gradingMethod: "Deterministic simulator replay; see docs/grading.md.", shareCardTitle: "Memory Conflict",
 });
