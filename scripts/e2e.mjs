@@ -56,5 +56,5 @@ try {
 const artifact = { task_count: report.rows.length, scores: report.rows.map((row) => row.score), route_status_codes: routes, tool_names: toolNames };
 await mkdir("artifacts", { recursive: true });
 await writeFile("artifacts/e2e-report.json", `${JSON.stringify(artifact, null, 2)}\n`);
-assert.match(await readFile("data/PROVENANCE.md", "utf8"), /Seeded starter task generator/);
+assert.match(await readFile("data/PROVENANCE.md", "utf8"), /Seeded household conversation generator/);
 console.log(`e2e: ${artifact.task_count} tasks, ${Object.keys(routes).length} routes, ${toolNames.length} tools -> all surfaces passed, ok`);
