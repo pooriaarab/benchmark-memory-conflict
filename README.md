@@ -4,21 +4,21 @@
 
 [AI Benchmark Index](https://private-repo-337e.com/benchmarks/benchmark-memory-conflict) · [npm](https://www.npmjs.com/package/benchmark-memory-conflict) · [API](#http-api) · [MCP](#model-context-protocol)
 
-benchmark-memory-conflict is an open-source AI model benchmark for agents tasks. It measures this behavior: Changing preferences and household disagreements in an assistant's memory.
+benchmark-memory-conflict measures whether an assistant keeps household bookings aligned with the **latest** valid memory: reversed preferences, disagreements between adults, private notes, expired allergies, cancel-first rules, and who may authorize spend.
 
 ```bash
 npx benchmark-memory-conflict run --model offline --provider mock --json
 ```
 
 ```json
-{"model":"mock:1","mean":0.5,"totals":{"tasks":2,"passed":1,"failed":0}}
+{"model":"mock:1","mean":0.5,"confidenceInterval95":{"low":0.35,"high":0.65},"totals":{"tasks":40,"passed":20,"failed":0}}
 ```
 
-The starter data comes from a committed seeded generator. Seed 20261015 reproduces the public tasks.
+The mock run above uses the committed reference traces (20 tasks score 1, 20 score 0). Real models need OpenRouter or an OpenAI-compatible endpoint.
 
 ## Install
 
-benchmark-memory-conflict requires Node.js 20 or newer.
+Node.js 20 or newer.
 
 ```bash
 npm install benchmark-memory-conflict
@@ -26,63 +26,55 @@ npm install benchmark-memory-conflict
 
 ## Run your first benchmark
 
-The mock provider needs no key or network access.
-
 ```bash
 npx benchmark-memory-conflict run --model offline --provider mock
 ```
 
-A successful run prints two scored rows and a mean of 0.5.
+Offline mock needs no API key. For a live model:
+
+```bash
+export OPENROUTER_API_KEY=...
+npx benchmark-memory-conflict run --model anthropic/claude-sonnet-4 --provider openrouter
+```
+
+## What the score means
+
+Each episode replays tool calls in a household simulator (`search_options`, `book`, `cancel`, `ask_user`, `read_memory`, `write_memory`). The grader checks:
+
+- Final booking matches the newest valid preference
+- Required cancellations happened
+- Private memories never leak through `ask_user`
+- Adults are consulted when a teen cannot authorize spend
+
+Per-task details include `staleMemoryUsed`, `privacyLeak`, and `askedWhenNeeded`. See [docs/grading.md](./docs/grading.md).
 
 ## How it works
 
 ```text
-tasks.jsonl -> model adapter -> deterministic grader -> report
+tasks.jsonl -> model adapter -> household simulator replay -> report
                          |-> CLI / SDK / MCP / HTTP API
 ```
 
-The runner keeps task order and records score, reason, latency, retries, usage, and cost when available.
+## Data provenance
 
-## Why it exists
+Forty synthetic household episodes are generated from MIT templates:
 
-General model leaderboards do not isolate agents behavior. This package keeps the task data, grading rules, and provenance together for inspection.
+```bash
+node scripts/gen-tasks.mjs --seed 20261015
+```
+
+`data/PROVENANCE.md` documents the public seed, hidden split command, and refresh cadence. Trap labels live in [docs/conflict-catalog.md](./docs/conflict-catalog.md). All conversation text is fictional (CC0-style).
+
+**Prior art:** [PerMemBench](https://arxiv.org/abs/2402.17746) studies long-term personal memory; this package focuses on **conflicting** household preferences with deterministic booking-state grading and no LLM judge.
 
 ## Compare
 
-Checked on 2026-10-15.
-
-| Property | benchmark-memory-conflict | General chat leaderboard | Ad hoc prompt test |
-| --- | --- | --- | --- |
-| Target | Changing preferences and household disagreements in an assistant's memory. | Broad model quality | One local example |
-| Grading | Deterministic code | Varies | Manual |
-| Offline run | Mock provider | Varies | Varies |
-| Provenance | Package record | Varies | Usually absent |
-
-## Coverage
-
-| Surface | Status |
-| --- | --- |
-| episode tasks | Included |
-| SDK | Included |
-| CLI | Included |
-| MCP server | Included |
-| HTTP API | Included |
-
-The E2E gate checks every listed surface against the package source.
-
-## Common use cases
-
-1. **Model developers:** compare adapters with the same seeded tasks.
-2. **Agent developers:** inspect task-level failures before changing prompts.
-3. **Release teams:** run the mock gate before publishing a data update.
-4. **Researchers:** export per-task scores for a reproducible analysis.
-
-## Features
-
-- **Deterministic grading:** Each row includes a score and reason.
-- **Reproducible data:** A committed seeded script creates the public tasks.
-- **Share cards:** The `card` command writes a 1200×630 SVG.
-- **Provenance:** Code and Markdown carry the same source record.
+| Property | benchmark-memory-conflict | General chat leaderboard |
+| --- | --- | --- |
+| Target | Memory conflict + consent in bookings | Broad quality |
+| Grading | Deterministic simulator replay | Varies |
+| Offline mock | Yes | Varies |
+| Provenance | Generator + catalog in-repo | Varies |
 
 ## SDK
 
@@ -90,77 +82,31 @@ The E2E gate checks every listed surface against the package source.
 import { benchmark, run, score } from "benchmark-memory-conflict";
 ```
 
-`run(adapter, options)` creates a report. `score(taskId, submission)` grades one trace.
-
 ## CLI
 
-Commands are `list`, `show`, `run`, `score`, `card`, `provenance`, `index-entry`, `serve`, and `mcp`. Pass `--json` for machine-readable output.
+`list`, `show`, `run`, `score`, `card`, `provenance`, `index-entry`, `serve`, `mcp`. Pass `--json` for machine-readable output.
 
 ## Model Context Protocol
-
-Start the MCP stdio server:
 
 ```bash
 npx benchmark-memory-conflict mcp
 ```
 
-Tools are `list_tasks`, `get_task`, `score_answer`, `run_benchmark`, and `get_provenance`.
+Tools: `list_tasks`, `get_task`, `score_answer`, `run_benchmark`, `get_provenance`.
 
 ## HTTP API
 
-Import `handler` from `benchmark-memory-conflict/api`, or run `npx benchmark-memory-conflict serve`. Routes are `GET /health`, `GET /v1/tasks`, `GET /v1/tasks/:id`, `POST /v1/score`, `GET /v1/provenance`, and `GET /v1/index-entry`.
+`handler` from `benchmark-memory-conflict/api`, or `npx benchmark-memory-conflict serve`.
 
-## Data provenance
-
-`data/tasks.jsonl` contains the public tasks. `data/PROVENANCE.md` names the generator, seed, licence, cutoff, and refresh steps. Run `npm run generate:tasks` to rebuild tasks and `npm run provenance` after a build.
+Routes: `GET /health`, `GET /v1/tasks`, `GET /v1/tasks/:id`, `POST /v1/score`, `GET /v1/provenance`, `GET /v1/index-entry`.
 
 ## Limits
 
-The starter tasks prove package wiring, not model quality. Replace them before publishing a real benchmark. Public tasks can enter training data. Keep a separately seeded hidden split for final comparisons. Remote providers can add cost and retain prompts under their own policies.
-
-## Integration guides
-
-- [TypeScript SDK integration](#sdk)
-- [Model Context Protocol integration](#model-context-protocol)
-- [HTTP API integration](#http-api)
+No public leaderboard yet (no OpenRouter runs from this repo). Public tasks may enter training data; keep a separately seeded hidden split for final comparisons (`--split hidden`). Grading does not judge natural-language quality beyond tool effects.
 
 ## Status
 
-Version 0.1.0 is alpha. Task schemas and grading may change before 1.0. Report defects through the GitHub issue tracker. Public case studies are not yet published.
-
-## FAQ
-
-### What does benchmark-memory-conflict measure?
-
-benchmark-memory-conflict measures this behavior: Changing preferences and household disagreements in an assistant's memory. The committed grader defines the exact pass conditions.
-
-### Can benchmark-memory-conflict run offline?
-
-benchmark-memory-conflict runs end to end with the mock provider and no key. Real model runs need a configured provider.
-
-### Which providers work?
-
-benchmark-memory-conflict supports OpenRouter, an OpenAI-compatible base URL, and the offline mock adapter through benchmark-core.
-
-### Does benchmark-memory-conflict provide a hosted service?
-
-benchmark-memory-conflict provides a server you run. It does not provide a managed benchmark service.
-
-### Where do the tasks come from?
-
-benchmark-memory-conflict ships seeded synthetic starter tasks. The provenance file explains how to reproduce and refresh them.
-
-### How are answers graded?
-
-benchmark-memory-conflict uses exact match for single answers and simulator replay for episode traces. Model judging is off.
-
-### How is this different from a general leaderboard?
-
-benchmark-memory-conflict measures one named behavior with inspectable tasks and grading. General leaderboards combine broader capabilities.
-
-### Can I use a hidden split?
-
-benchmark-memory-conflict supports the same schema for public and hidden tasks. Keep hidden data outside the npm package and public repository.
+Version 0.1.0, alpha. Task traps and grading weights may change before 1.0.
 
 ## License
 
