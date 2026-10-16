@@ -13,17 +13,14 @@
 - **Tasks:** 40 episode scenarios in `data/tasks.jsonl`
 - **Generator:** `scripts/gen-tasks.mjs`
 
-Every seeded draw flows through `mulberry32(seed)`: trap placement, service, option draw, member names, dates, and booking ids. A different `--seed` produces a different public task set.
-
 ## Hidden split
 
-- **Command:** `node scripts/gen-tasks.mjs --seed <unpublished-seed> --split hidden`
-- **Output:** `data/tasks-hidden.jsonl` (never committed; gitignored, for maintainer evaluation only)
-- **Plan:** The hidden split refuses the public seed and uses a separate template profile (`hh-birch` household, different member names, option labels, private notes, and prompt phrasing), so hidden content cannot coincide with public rows even before the seeds differ.
+- **Status:** pending; lands in a follow-up change (`bmcf-20-hidden-split`). This revision only accepts `--split public`.
+- **Plan:** unpublished seed with `mmc-h-###` ids; `data/tasks-hidden.jsonl` is never committed.
 
 ## Contamination
 
-All conversation text is synthetic (CC0-style fictional households). No PerMemBench text is copied. Public release cutoff: **2026-10-15**. Public tasks may enter training data; final comparisons should use the hidden split.
+All conversation text is synthetic (CC0-style fictional households). No PerMemBench text is copied. Public release cutoff: **2026-10-15**.
 
 ## Refresh cadence
 
