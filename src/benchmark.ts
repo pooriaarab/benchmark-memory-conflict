@@ -32,10 +32,14 @@ export const benchmark = defineBenchmark({
     bad: (task) => task.kind === "episode" ? [{ content: "Skipped the tool." }] : [],
   },
   provenance: [{
-    name: "Seeded starter task generator", kind: "synthetic", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/scripts/gen-tasks.mjs",
-    licence: "MIT", howToGet: "Run `node scripts/gen-tasks.mjs` from the repository root.", retrievedAt: "2026-10-15T00:00:00.000Z",
-    contaminationNotes: "Public starter tasks generated with seed 20261015. Keep final evaluation tasks in a separately seeded hidden split.",
-    refresh: "Change the seed, run the generator, and review the JSONL diff.",
+    name: "Seeded household conversation generator", kind: "synthetic", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/scripts/gen-tasks.mjs",
+    licence: "MIT", howToGet: "Run `node scripts/gen-tasks.mjs --seed 20261015` from the repository root.", retrievedAt: "2026-10-16T00:00:00.000Z",
+    contaminationNotes: "Public tasks use seed 20261015. Hidden split: `node scripts/gen-tasks.mjs --seed 20261015 --split hidden` (not committed).",
+    refresh: "Edit templates in scripts/gen-tasks.mjs, regenerate, and review the JSONL diff.",
+  }, {
+    name: "Household conflict catalog", kind: "human-written", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/docs/conflict-catalog.md",
+    licence: "MIT", howToGet: "Read docs/conflict-catalog.md in this repository.", retrievedAt: "2026-10-16T00:00:00.000Z",
+    contaminationNotes: "Trap labels are maintainer-written; tasks are synthetic from templates.", refresh: "Extend the catalog and generator templates together.",
   }],
   gradingMethod: "Exact match for single answers; deterministic state replay for episodes.",
 });
