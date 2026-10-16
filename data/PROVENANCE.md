@@ -1,30 +1,23 @@
-# Data provenance
+# Memory Conflict provenance
 
-## Sources
+This file is generated from the benchmark definition.
 
-| Name | Kind | Licence | How to obtain |
-|---|---|---|---|
-| Seeded household conversation generator | synthetic | MIT | `node scripts/gen-tasks.mjs --seed 20261015` |
-| Household conflict catalog | human-written | MIT | `docs/conflict-catalog.md` |
+## Seeded household conversation generator
 
-## Public split
+- Kind: `synthetic`
+- URL: https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/scripts/gen-tasks.mjs
+- Licence: `MIT`
+- Retrieved: 2026-10-16T00:00:00.000Z
+- How to get it: Run `node scripts/gen-tasks.mjs --seed 20261015` from the repository root.
+- Contamination notes: Public tasks use seed 20261015. A separately seeded hidden split is added in a follow-up change; this revision only accepts `--split public`.
+- Refresh: Edit templates in scripts/gen-tasks.mjs, regenerate, and review the JSONL diff.
 
-- **Seed:** `20261015`
-- **Tasks:** 40 episode scenarios in `data/tasks.jsonl`
-- **Generator:** `scripts/gen-tasks.mjs`
+## Household conflict catalog
 
-Every seeded draw flows through `mulberry32(seed)`: trap placement, service, option draw, member names, dates, and booking ids. A different `--seed` produces a different public task set.
-
-## Hidden split
-
-- **Command:** `node scripts/gen-tasks.mjs --seed 20261015 --split hidden`
-- **Output:** `data/tasks-hidden.jsonl` (not published; for maintainer evaluation only)
-- **Plan:** Same templates with `mmc-h-###` ids; never commit hidden rows to the public JSONL.
-
-## Contamination
-
-All conversation text is synthetic (CC0-style fictional households). No PerMemBench text is copied. Public release cutoff: **2026-10-15**.
-
-## Refresh cadence
-
-Quarterly review of trap coverage, or when a new reversible-booking tool pattern appears. Bump the seed when refreshing public tasks.
+- Kind: `human-written`
+- URL: https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/docs/conflict-catalog.md
+- Licence: `MIT`
+- Retrieved: 2026-10-16T00:00:00.000Z
+- How to get it: Read docs/conflict-catalog.md in this repository.
+- Contamination notes: Trap labels are maintainer-written; tasks are synthetic from templates.
+- Refresh: Extend the catalog and generator templates together.
