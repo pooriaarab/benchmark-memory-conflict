@@ -2,12 +2,22 @@
 
 This file is generated from the benchmark definition.
 
-## Seeded starter task generator
+## Seeded household conversation generator
 
 - Kind: `synthetic`
 - URL: https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/scripts/gen-tasks.mjs
 - Licence: `MIT`
-- Retrieved: 2026-10-15T00:00:00.000Z
-- How to get it: Run `node scripts/gen-tasks.mjs` from the repository root.
-- Contamination notes: Public starter tasks generated with seed 20261015. Keep final evaluation tasks in a separately seeded hidden split.
-- Refresh: Change the seed, run the generator, and review the JSONL diff.
+- Retrieved: 2026-10-16T00:00:00.000Z
+- How to get it: Run `node scripts/gen-tasks.mjs --seed 20261015` from the repository root.
+- Contamination notes: Public tasks use seed 20261015; public release cutoff 2026-10-15 and no PerMemBench text copied. Hidden split: `node scripts/gen-tasks.mjs --seed <unpublished> --split hidden` (never committed). The hidden template profile ships in this repository, so the split is protected only by the unpublished seed, not by content isolation.
+- Refresh: Edit templates in scripts/gen-tasks.mjs, regenerate, and review the JSONL diff.
+
+## Household conflict catalog
+
+- Kind: `human-written`
+- URL: https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/docs/conflict-catalog.md
+- Licence: `MIT`
+- Retrieved: 2026-10-16T00:00:00.000Z
+- How to get it: Read docs/conflict-catalog.md in this repository.
+- Contamination notes: Trap labels are maintainer-written; tasks are synthetic from templates.
+- Refresh: Extend the catalog and generator templates together.

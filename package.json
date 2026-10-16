@@ -1,8 +1,23 @@
 {
   "name": "benchmark-memory-conflict",
   "version": "0.1.0",
-  "description": "Changing preferences and household disagreements in an assistant's memory.",
-  "keywords": ["ai-benchmark", "llm-evaluation", "model-evaluation", "evals", "grading", "openrouter", "openai", "mcp", "typescript", "agent-benchmark"],
+  "description": "Benchmark for household memory conflicts: latest preference, privacy, booking consent, and authority in agent tool traces.",
+  "keywords": [
+    "ai-benchmark",
+    "llm-evaluation",
+    "agent-benchmark",
+    "memory-conflict",
+    "household-agent",
+    "tool-use",
+    "deterministic-grading",
+    "openrouter",
+    "mcp",
+    "evals",
+    "preference-tracking",
+    "privacy",
+    "booking-agent",
+    "typescript"
+  ],
   "homepage": "https://aibenchmarkindex.com/benchmarks/benchmark-memory-conflict",
   "bugs": "https://github.com/pooriaarab/benchmark-memory-conflict/issues",
   "repository": { "type": "git", "url": "git+https://github.com/pooriaarab/benchmark-memory-conflict.git" },
@@ -14,7 +29,7 @@
     "./api": { "types": "./dist/api.d.ts", "import": "./dist/api.js" }
   },
   "bin": { "benchmark-memory-conflict": "./dist/cli.js" },
-  "files": ["dist", "data", "README.md", "AGENTS.md", "llms.txt", "server.json", "LICENSE"],
+  "files": ["dist", "data", "README.md", "AGENTS.md", "llms.txt", "server.json", "LICENSE", "CHANGELOG.md"],
   "engines": { "node": ">=20" }, "sideEffects": false,
   "scripts": {
     "lint": "oxlint src scripts", "typecheck": "tsc --noEmit", "build": "tsup",
