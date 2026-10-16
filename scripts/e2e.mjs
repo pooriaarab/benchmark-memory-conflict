@@ -22,6 +22,20 @@ const goodScores = report.rows.filter((row) => row.score >= 0.85);
 const badScores = report.rows.filter((row) => row.score === 0);
 assert.ok(goodScores.length >= 20, "mock good policy should score high on reference traces");
 assert.ok(badScores.length >= 20, "mock bad policy should score zero on many tasks");
+assert.ok(report.totals.staleMemoryUsed >= 1, "run totals should count stale-memory use");
+assert.ok(report.totals.privacyLeak >= 1, "run totals should count privacy leaks");
+assert.equal(typeof report.totals.askedWhenNeeded, "number");
+assert.ok(report.rows.some((row) => row.details && row.details.staleMemoryUsed !== undefined), "run rows should carry detail flags");
+
+// `score` re-grades a saved report and must carry the same metric totals.
+const reportDir = await mkdtemp(join(tmpdir(), "mmc-report-"));
+const reportFile = join(reportDir, "report.json");
+await writeFile(reportFile, cli.stdout);
+const rescored = JSON.parse((await execFile(process.execPath, ["dist/cli.js", "score", reportFile, "--json"])).stdout);
+assert.equal(rescored.totals.staleMemoryUsed, report.totals.staleMemoryUsed);
+assert.equal(rescored.totals.privacyLeak, report.totals.privacyLeak);
+assert.equal(rescored.totals.askedWhenNeeded, report.totals.askedWhenNeeded);
+assert.ok(rescored.rows.every((row) => row.details), "score rows should carry detail flags");
 
 const tasks = await benchmark.listTasks();
 const sample = tasks[0];
@@ -241,6 +255,15 @@ const wrongful = await benchmark.score(keepTask, { toolLog: [{ name: "cancel", a
 assert.equal(wrongful.score, 0, `cancelling a valid booking should fail, got ${wrongful.score}`);
 assert.match(wrongful.reason, /cancelled a valid booking/);
 
+// Writing a subject's own note to their own private memory is not a leak;
+// broadcasting it to another member's memory or over ask_user still is.
+for (const task of tasks.filter((t) => (t.expected.forbiddenLeaks ?? []).length > 0)) {
+  const subject = task.expected.forbiddenLeaks[0].recipientIds[0];
+  const note = task.input.memories.find((m) => m.scope === "private");
+  const ownNotebook = await benchmark.score(task, { toolLog: [{ name: "write_memory", args: { memberId: subject, scope: "private", text: note.text }, result: {} }, rightBook(task)] }, { seed: 1 });
+  assert.equal(ownNotebook.score, 1, `own-note private write should not leak on ${task.id}: ${ownNotebook.reason}`);
+}
+
 // Harmless denials must not trip the privacy check, and a malformed log must not crash grading.
 for (const task of tasks.filter((t) => (t.expected.forbiddenLeaks ?? []).length > 0)) {
   const subject = task.expected.forbiddenLeaks[0].recipientIds[0];
@@ -298,6 +321,10 @@ try {
   for (const [name, args] of calls) {
     const result = await client.callTool({ name, arguments: args });
     if (name === "run_benchmark") assert.equal(result.isError, true); else assert.notEqual(result.isError, true);
+    if (name === "score_answer") {
+      const parsed = JSON.parse(result.content[0].text);
+      assert.ok(parsed.details && typeof parsed.details.staleMemoryUsed === "boolean", "MCP score_answer should carry detail flags");
+    }
   }
   // Alternate split over MCP: served tasks are stripped, scoring still works.
   const mcpHidden = JSON.parse((await client.callTool({ name: "list_tasks", arguments: { tasks: hiddenPath } })).content[0].text);
