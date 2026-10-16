@@ -4,13 +4,14 @@
 
 - Install with `npm ci`.
 - Run the full gate with `npm run ci:local`.
-- Generate tasks with `npm run generate:tasks`.
+- Generate tasks with `npm run generate:tasks` (`node scripts/gen-tasks.mjs --seed 20261015`).
+- Hidden split: `node scripts/gen-tasks.mjs --seed 20261015 --split hidden` (do not commit `data/tasks-hidden.jsonl`).
 - Generate provenance after building with `npm run provenance`.
 - Add no unit tests. Extend `scripts/e2e.mjs` through a public surface.
 
 ## Contracts
 
-Keep tasks, deterministic grading, and provenance in sync. Episode environments must be seeded. Grade episode traces by replaying their tool log.
+Keep tasks, deterministic grading (`src/grade.ts`, `docs/grading.md`), and provenance in sync. Episode environments must be seeded. Grade episode traces by replaying their tool log in `src/household-environment.ts`.
 
 Never read provider keys from repository files. OpenRouter uses `OPENROUTER_API_KEY`. OpenAI-compatible providers use `OPENAI_BASE_URL` and `OPENAI_API_KEY`.
 
