@@ -52,7 +52,7 @@ export class HouseholdEnvironment implements Environment {
     if (name === "search_options") {
       const service = s("service"); const q = s("query").toLowerCase();
       const options = this.#input.options.filter((o) => (!service || o.service === service) && (!q || o.label.toLowerCase().includes(q) || o.tags.some((t) => t.includes(q))));
-      return { result: { options: options.map((o) => ({ id: o.id, label: o.label, tags: o.tags })) } };
+      return { result: { options: options.map((o) => ({ id: o.id, service: o.service, label: o.label, tags: o.tags })) } };
     }
     if (name === "book") {
       const optionId = s("optionId"); const memberId = s("memberId"); const service = s("service");
