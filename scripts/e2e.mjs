@@ -27,7 +27,7 @@ const badCases = [
     label: "stale-booking",
     submission: {
       toolLog: [
-        { name: "book", args: { optionId: sample.expected.staleIfBookOptionIds?.[0] ?? sample.input.options[0].id, memberId: sample.input.requesterId, service: sample.input.options[0].service }, result: {} },
+        { name: "book", args: { optionId: sample.expected.staleIfBookOptionIds?.[0] ?? sample.input.options.find((o) => o.id !== sample.expected.bookOptionId)?.id, memberId: sample.input.requesterId, service: sample.input.options[0].service }, result: {} },
       ],
     },
   },
