@@ -6,7 +6,7 @@ Deterministic replay of the household simulator. See `src/household-environment.
 
 ## Failure modes
 
-Wrong booking, missed cancel, stale memory use, private text in `ask_user` (matched as normalized multi-word phrases, not single keywords), skipping required clarification, invalid tool replay.
+Wrong or extra bookings (exactly one active booking must remain), missed cancel, cancelling a still-valid booking, stale memory use, private text in `ask_user`/`write_memory`/the final answer (matched as normalized multi-word shingles and rubric phrases, not single keywords), skipping required clarification, invalid tool replay.
 
 ## Metrics
 
