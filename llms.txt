@@ -1,0 +1,19 @@
+# benchmark-memory-conflict
+
+> Changing preferences and household disagreements in an assistant's memory.
+
+Package: https://www.npmjs.com/package/benchmark-memory-conflict
+Repository: https://github.com/pooriaarab/benchmark-memory-conflict
+Directory: https://aibenchmarkindex.com/benchmarks/benchmark-memory-conflict
+
+## Exports
+
+The root exports `benchmark`, `run`, and `score`. `benchmark-memory-conflict/api` exports the fetch-style `handler`. `benchmark-memory-conflict/mcp` exports MCP builders.
+
+## Commands
+
+The CLI supports list, show, run, score, card, provenance, index-entry, serve, and mcp. Use the mock provider for offline verification.
+
+## Verification
+
+Run `npm run ci:local`. The report is `artifacts/e2e-report.json`.
