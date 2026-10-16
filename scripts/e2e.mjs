@@ -2,13 +2,17 @@ import assert from "node:assert/strict";
 import { execFile as execFileCallback, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer as createNetServer } from "node:net";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { benchmark } from "../dist/index.js";
 
 const execFile = promisify(execFileCallback);
+const genScript = fileURLToPath(new URL("./gen-tasks.mjs", import.meta.url));
 
 await execFile("npm", ["run", "build"]);
 const cli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--json"], { maxBuffer: 4_000_000 });
@@ -21,6 +25,33 @@ assert.ok(badScores.length >= 20, "mock bad policy should score zero on many tas
 
 const tasks = await benchmark.listTasks();
 const sample = tasks[0];
+
+// The hidden split must differ from public rows and must refuse the public seed.
+const fingerprint = (t) => JSON.stringify([t.metadata.trap, t.input.options.map((o) => o.id).sort(), t.input.members.map((m) => m.id).sort(), t.input.today, t.prompt]);
+const hiddenDir = await mkdtemp(join(tmpdir(), "mmc-hidden-"));
+await execFile(process.execPath, [genScript, "--seed", "424242", "--split", "hidden"], { cwd: hiddenDir });
+const hiddenTasks = (await readFile(join(hiddenDir, "data/tasks-hidden.jsonl"), "utf8")).trim().split("\n").map(JSON.parse);
+const publicContent = new Set(tasks.map(fingerprint));
+assert.equal(hiddenTasks.length, 40);
+assert.ok(hiddenTasks.every((t) => !publicContent.has(fingerprint(t))), "hidden split must not reuse public scenario content");
+await assert.rejects(execFile(process.execPath, [genScript, "--seed", "20261015", "--split", "hidden"], { cwd: hiddenDir }), /unpublished seed/);
+
+// Hidden fixtures must reference real options, members and bookings, and every
+// hidden reference trace must grade high through the real grader.
+for (const t of hiddenTasks) {
+  const optIds = new Set(t.input.options.map((o) => o.id));
+  const memIds = new Set(t.input.members.map((m) => m.id));
+  const bkIds = new Set(t.input.bookings.map((b) => b.id));
+  assert.ok(optIds.has(t.expected.bookOptionId), `${t.id} expected option missing`);
+  for (const m of t.expected.mustAskUserIds) assert.ok(memIds.has(m), `${t.id} unknown mustAskUser ${m}`);
+  for (const b of t.expected.cancelBookingIds) assert.ok(bkIds.has(b), `${t.id} unknown booking ${b}`);
+  for (const o of t.expected.staleIfBookOptionIds) assert.ok(optIds.has(o), `${t.id} stale option ${o}`);
+  for (const r of (t.expected.forbiddenLeaks ?? []).flatMap((l) => l.recipientIds)) assert.ok(memIds.has(r), `${t.id} unknown leak recipient ${r}`);
+  const toolLog = (t.metadata?.referenceTrace ?? []).map((e) => ({ name: e.name, args: e.args ?? {}, result: {} }));
+  const scored = await benchmark.score(t, { toolLog }, { seed: 1 });
+  assert.ok(scored.score >= 0.85, `${t.id} reference trace should grade high, got ${scored.score}`);
+}
+
 const badCases = [
   { label: "empty", submission: { toolLog: [] } },
   {
