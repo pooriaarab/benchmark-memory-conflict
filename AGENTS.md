@@ -5,7 +5,7 @@
 - Install with `npm ci`.
 - Run the full gate with `npm run ci:local`.
 - Generate tasks with `npm run generate:tasks` (`node scripts/gen-tasks.mjs --seed 20261015`).
-- Hidden split: `node scripts/gen-tasks.mjs --seed 20261015 --split hidden` (do not commit `data/tasks-hidden.jsonl`).
+- Hidden split: `node scripts/gen-tasks.mjs --seed <unpublished> --split hidden` (never the public seed; do not commit `data/tasks-hidden.jsonl`).
 - Generate provenance after building with `npm run provenance`.
 - Add no unit tests. Extend `scripts/e2e.mjs` through a public surface.
 

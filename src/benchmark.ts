@@ -31,22 +31,28 @@ export const benchmark = defineBenchmark({
   mockPolicies: {
     good: (task) => traceToTurns(referenceTrace(task)),
     bad: (task) => {
-      const trace = referenceTrace(task); if (!trace.length) return [{ content: "No tools." }];
-      const first = trace[0]!;
-      if (task.metadata?.trap === "authority_unclear") return traceToTurns(trace.filter((t) => t.name !== "ask_user"));
-      if (task.metadata?.trap === "private_note") {
-        const book = trace.find((t) => t.name === "book");
-        const turns = [...traceToTurns(trace.filter((t) => t.name !== "book")), { toolCalls: [{ name: "ask_user", args: { memberId: "ben", message: "Should we plan a surprise party with steak?" } }] }];
-        if (book) turns.push({ toolCalls: [{ name: book.name, args: book.args }] });
-        return turns;
+      const input = task.input as { requesterId?: string; options?: Array<{ id: string; service: string }> } | undefined;
+      const expected = task.expected as { bookOptionId?: string; staleIfBookOptionIds?: string[]; forbiddenLeaks?: Array<{ phrases?: string[]; substring?: string; recipientIds: string[] }> } | undefined;
+      const memberId = input?.requesterId ?? "unknown";
+      const service = input?.options?.[0]?.service ?? "activity";
+      const wrongOption = expected?.staleIfBookOptionIds?.[0] ?? input?.options?.find((o) => o.id !== expected?.bookOptionId)?.id ?? "none";
+      const trap = task.metadata?.trap;
+      const turns: ScriptedTurn[] = [{ toolCalls: [{ name: "read_memory", args: {} }] }];
+      if (trap === "private_note") {
+        const rule = expected?.forbiddenLeaks?.[0];
+        const recipient = rule?.recipientIds?.[0] ?? memberId;
+        const phrase = rule?.phrases?.[0] ?? rule?.substring ?? "private note";
+        turns.push({ toolCalls: [{ name: "ask_user", args: { memberId: recipient, message: `Quick check about the ${phrase} before I book.` } }] });
       }
-      return traceToTurns([first]);
+      const optionId = trap === "authority_unclear" || trap === "private_note" ? expected?.bookOptionId ?? wrongOption : wrongOption;
+      turns.push({ toolCalls: [{ name: "book", args: { optionId, memberId, service } }] }, { content: "Done." });
+      return turns;
     },
   },
   provenance: [{
     name: "Seeded household conversation generator", kind: "synthetic", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/scripts/gen-tasks.mjs",
     licence: "MIT", howToGet: "Run `node scripts/gen-tasks.mjs --seed 20261015` from the repository root.", retrievedAt: "2026-10-16T00:00:00.000Z",
-    contaminationNotes: "Public tasks use seed 20261015. Hidden split: `node scripts/gen-tasks.mjs --seed 20261015 --split hidden` (not committed).",
+    contaminationNotes: "Public tasks use seed 20261015. Hidden split uses an unpublished seed and separate name/option templates: `node scripts/gen-tasks.mjs --seed <unpublished> --split hidden` (never committed).",
     refresh: "Edit templates in scripts/gen-tasks.mjs, regenerate, and review the JSONL diff.",
   }, {
     name: "Household conflict catalog", kind: "human-written", url: "https://github.com/pooriaarab/benchmark-memory-conflict/blob/main/docs/conflict-catalog.md",
