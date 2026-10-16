@@ -156,7 +156,8 @@ export async function gradeMemoryConflict(task: Task, submission: Trace, seed: n
   const cancelled = new Set((state.bookings ?? []).filter((b) => b.status === "cancelled").map((b) => b.id));
   const staleMemoryUsed = active.some((b) => expected.staleIfBookOptionIds.includes(b.optionId));
   const leak = privacyLeak(submission.toolLog ?? [], typeof submission.answer === "string" ? submission.answer : "", input, expected);
-  const asked = !expected.mustAskUserIds.length || expected.mustAskUserIds.every((id) => state.askedMemberIds?.includes(id));
+  const authorizers = new Set(input.members.filter((m) => m.canAuthorize).map((m) => m.id));
+  const asked = !expected.mustAskUserIds.length || (state.askedMemberIds ?? []).some((id) => authorizers.has(id));
   const bookingOk = expected.bookOptionId ? active.length === 1 && active[0]?.optionId === expected.bookOptionId : active.length === 0;
   const cancelOk = expected.cancelBookingIds.every((id) => cancelled.has(id));
   const wrongfulCancel = input.bookings.some((b) => b.status === "active" && !expected.cancelBookingIds.includes(b.id) && cancelled.has(b.id));
