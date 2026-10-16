@@ -11,7 +11,7 @@
 
 ## Contracts
 
-Keep tasks, deterministic grading (`src/grade.ts`, `docs/grading.md`), and provenance in sync. Episode environments must be seeded. Grade episode traces by replaying their tool log in `src/household-environment.ts`.
+Keep tasks, deterministic grading (`src/household-environment.ts`, `docs/grading.md`), and provenance in sync. Episode environments must be seeded. Grade episode traces by replaying their tool log in `src/household-environment.ts`.
 
 Never read provider keys from repository files. OpenRouter uses `OPENROUTER_API_KEY`. OpenAI-compatible providers use `OPENAI_BASE_URL` and `OPENAI_API_KEY`.
 
