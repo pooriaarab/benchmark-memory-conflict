@@ -26,3 +26,7 @@ Each episode task ships an `expected` object. After replaying the submitted `too
 ## Bad-answer regression (E2E)
 
 `scripts/e2e.mjs` scores deliberately bad traces (empty log, stale-booking shortcut, leaking private notes, booking without asking) and expects scores below `0.35`. The mock `good` policy must score above `0.85` on average.
+
+## E2E bad-answer pass
+
+See scripts/e2e.mjs for empty traces, stale bookings, privacy leaks, and missing ask_user checks.
