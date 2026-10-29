@@ -1,0 +1,3 @@
+\begin{tikzpicture}\begin{axis}[xlabel={Injected error probability (simulated)},ylabel={Pass rate (simulated)},ymin=0,ymax=1.05,legend style={font=\footnotesize,at={(.5,-.28)},anchor=north,legend columns=3},height=6cm]
+\foreach \control/\label in {none/None,authority/Authority,privacy/Privacy,cancellation/Cancellation,all/All repairs}{\addplot+[error bars/.cd,y dir=both,y explicit] table[x=q,y=value,y error minus=minus,y error plus=plus,col sep=comma]{data/sim-\control.generated.csv};\expandafter\addlegendentry\expandafter{\label}}
+\end{axis}\end{tikzpicture}
