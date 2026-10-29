@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "title": "Memory Conflict: Auditing Household Decisions Under Changing Preferences",
+  "abstract": "Stored preferences can become invalid without disappearing. Memory Conflict evaluates whether household assistants act on current preferences while preserving privacy, booking state, and authority boundaries. We audit 40 synthetic episodes across 6 conflict types with 12 scripted conditions and 960 runner episodes including repeats. Reference actions achieve pass rate 1.000 [0.912, 1.000]; empty output achieves 0.000 [0.000, 0.088]. Moving clarification after booking also achieves 1.000 [0.912, 1.000], exposing a temporal limit of final-state scoring. These are 95% Wilson intervals over tasks, not population guarantees. A clearly simulated population sweep scores 30000 traces under injected errors and perfect control repairs. The sweep estimates sensitivity under explicit assumptions, not model performance. No learned model or human participant is evaluated.",
+  "authors": [
+    {
+      "name": "Pooria Arab",
+      "affiliation": "Independent researcher",
+      "orcid": "https://orcid.org/0009-0005-9964-6841"
+    }
+  ],
+  "license": "CC-BY-4.0",
+  "keywords": [
+    "memory conflict",
+    "household agents",
+    "tool use",
+    "benchmark validity",
+    "simulated controls"
+  ],
+  "code_url": "https://github.com/pooriaarab/benchmark-memory-conflict",
+  "artifact_name": "memory-conflict-paper.pdf"
+}

@@ -1,0 +1,3 @@
+\begin{tikzpicture}\begin{axis}[ybar,ymin=0,ymax=9,ylabel={Episode count},xtick={0,1,2,3,4,5},xticklabels={Authority,Cancel,Expiry,Disagreement,Privacy,Reversal},x tick label style={rotate=22,anchor=east},bar width=22pt,nodes near coords]
+\addplot[fill=okblue] table[x=index,y=count,col sep=comma]{data/coverage.generated.csv};
+\end{axis}\end{tikzpicture}
